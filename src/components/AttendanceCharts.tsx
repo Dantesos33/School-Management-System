@@ -83,7 +83,7 @@ const AttendanceCharts = () => {
           <XAxis dataKey="name" axisLine={false} tickLine={false} />
           <YAxis width="auto" axisLine={false} tickLine={false} />
           <Tooltip />
-          <Legend align="left" verticalAlign="top" wrapperStyle={{ paddingTop: "20px", paddingBottom: "40px" }} />
+          <Legend align="left" verticalAlign="top" wrapperStyle={{ paddingTop: "20px", paddingBottom: "40px", fontWeight: "bold" }} />
           <Bar
             dataKey="present"
             fill="#FAE27C"
