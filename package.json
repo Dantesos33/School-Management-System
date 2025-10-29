@@ -16,7 +16,9 @@
     "react-big-calendar": "^1.19.4",
     "react-calendar": "^6.0.0",
     "react-dom": "^18",
-    "recharts": "^3.3.0"
+    "react-hook-form": "^7.65.0",
+    "recharts": "^3.3.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^20",
