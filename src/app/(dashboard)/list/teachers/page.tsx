@@ -2,10 +2,10 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { role, teachersData } from "@/lib/data";
+import { role } from "@/lib/data";
 import Image from "next/image";
 import React from "react";
-import { Class, Subject, Teacher } from "@prisma/client";
+import { Class, Prisma, Subject, Teacher } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
 
@@ -74,8 +74,8 @@ const renderRow = (item: TeacherList) => (
       <div className="flex items-center gap-2">
         {role === "admin" && (
            <>
-          <FormModal table="class" type="update" data={item} id={parseInt(item.id)} />
-          <FormModal table="class" type="delete" id={parseInt(item.id)} />
+          <FormModal table="class" type="update" data={item} id={item.id} />
+          <FormModal table="class" type="delete" id={item.id} />
           </>
         )}
       </div>
@@ -88,8 +88,32 @@ const TeacherListPage = async ( {searchParams} : { searchParams: {[key: string]:
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
 
+  const query: Prisma.TeacherWhereInput = {}
+
+  if(queryParams){
+    for(const [key, value] of Object.entries(queryParams)){
+      if(value !== undefined){
+        switch (key){
+          case "classId":
+            query.lessons = {
+              some: {
+                classId: parseInt(value),
+              }
+            }
+            break;
+            case "search":
+              query.name = {contains: value, mode: "insensitive"}
+              break;
+            default:
+              break;
+        }
+      }
+    }
+  }
+
   const [data, count] = await prisma.$transaction([
     prisma.teacher.findMany({
+    where: query,
     include: {
       subjects: true,
       classes: true,
@@ -97,7 +121,9 @@ const TeacherListPage = async ( {searchParams} : { searchParams: {[key: string]:
     take: ITEMS_PER_PAGE,
     skip: ITEMS_PER_PAGE * (p - 1)
   }),
-  prisma.teacher.count(),
+  prisma.teacher.count({
+    where: query
+  }),
   ]);
 
   // console.log(data);
