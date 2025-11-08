@@ -2,12 +2,11 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { lessonsData, role } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
+import { role } from "@/lib/utils";
 import { Class, Lesson, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
-import Link from "next/link";
 import React from "react";
 
 const columns = [
@@ -24,10 +23,10 @@ const columns = [
     accessor: "teacher",
     className: "hidden md:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "action",
-  },
+  ...(role === "admin" ? [{
+        header: "Actions",
+        accessor: "action",
+      }]: []),
 ];
 
 type LessonList = Lesson & {subject: Subject} & {class: Class} & {teacher: Teacher};
@@ -38,7 +37,7 @@ const renderRow = (item: LessonList) => (
     className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
   >
     <td className="flex items-center gap-4 p-4">{item.subject.name}</td>
-    <td>{item.class.name}</td>
+    <td>{item.class?.name || "-"}</td>
     <td className="hidden md:table-cell">{item.teacher.name}</td>
     <td>
       <div className="flex items-center gap-2">

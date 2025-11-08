@@ -2,12 +2,11 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { parentsData, role} from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
+import { role } from "@/lib/utils";
 import { Parent, Prisma, Student } from "@prisma/client";
 import Image from "next/image";
-import Link from "next/link";
 import React from "react";
 
 const columns = [
@@ -30,10 +29,10 @@ const columns = [
     accessor: "address",
     className: "hidden md:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "action",
-  },
+  ...(role === "admin" ? [{
+          header: "Actions",
+          accessor: "action",
+        }]: []),
 ];
 
 type ParentList = Parent & { students: Student[] };
@@ -115,7 +114,7 @@ const ParentListPage = async ( {searchParams} : { searchParams: {[key: string]:s
             <button className="w-8 h-8 bg-schooYellow rounded-full flex items-center justify-center">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "admin" && (
+            {(role === "admin" || role === "teacher") && (
               <FormModal table="parent" type="create" />
             )}
           </div>
