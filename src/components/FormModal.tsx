@@ -2,7 +2,26 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useFormState } from "react-dom";
+import { deleteSubject } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+const deleteActionMap = {
+  subject: deleteSubject,
+  // class: deleteClass,
+  // teacher: deleteTeacher,
+  // student: deleteStudent,
+  // parent: deleteParent,
+  // lesson: deleteLesson,
+  // exam: deleteExam,
+  // assignment: deleteAssignment,
+  // result: deleteResult,
+  // attendance: deleteAttendance,
+  // event: deleteEvent,
+  // announcement: deleteAnnouncement,
+}
 
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"));
 const StudentForm = dynamic(() => import("./forms/StudentForm"));
@@ -18,19 +37,19 @@ const AttendanceForm = dynamic(() => import("./forms/AttendanceForm"));
 const EventForm = dynamic(() => import("./forms/EventForm"));
 
 
-const forms: { [key: string]: ( type: "create" | "update", data?: any ) => JSX.Element } = {
-  teacher: (type, data) => <TeacherForm type={type} data={data} />,
-  student: (type, data) => <StudentForm type={type} data={data} />,
-  parent: (type, data) => <ParentForm type={type} data={data} />,
-  class: (type, data) => <ClassForm type={type} data={data} />,
-  subject: (type, data) => <SubjectForm type={type} data={data} />,
-  lesson: (type, data) => <LessonForm type={type} data={data} />,
-  assignment: (type, data) => <AssignmentForm type={type} data={data} />,
-  announcement: (type, data) => <AnnouncementForm type={type} data={data} />,
-  result: (type, data) => <ResultForm type={type} data={data} />,
-  attendance: (type, data) => <AttendanceForm type={type} data={data} />,
-  event: (type, data) => <EventForm type={type} data={data} />,
-  exam: (type, data) => <ExamForm type={type} data={data} />,
+const forms: { [key: string]: ( setOpen: React.Dispatch<React.SetStateAction<boolean>>, type: "create" | "update", data?: any) => JSX.Element } = {
+  teacher: (setOpen, type, data) => <TeacherForm type={type} data={data} setOpen={setOpen} />,
+  student: (setOpen, type, data) => <StudentForm type={type} data={data} setOpen={setOpen} />,
+  parent: (setOpen, type, data) => <ParentForm type={type} data={data} setOpen={setOpen} />,
+  class: (setOpen, type, data) => <ClassForm type={type} data={data} setOpen={setOpen} />,
+  subject: (setOpen, type, data) => <SubjectForm type={type} data={data} setOpen={setOpen} />,
+  lesson: (setOpen, type, data) => <LessonForm type={type} data={data} setOpen={setOpen} />,
+  assignment: (setOpen, type, data) => <AssignmentForm type={type} data={data} setOpen={setOpen} />,
+  announcement: (setOpen, type, data) => <AnnouncementForm type={type} data={data} setOpen={setOpen} />,
+  result: (setOpen, type, data) => <ResultForm type={type} data={data} setOpen={setOpen} />,
+  attendance: (setOpen, type, data) => <AttendanceForm type={type} data={data} setOpen={setOpen} />,
+  event: (setOpen, type, data) => <EventForm type={type} data={data} setOpen={setOpen} />,
+  exam: (setOpen, type, data) => <ExamForm type={type} data={data} setOpen={setOpen} />,
 };
 
 const FormModal = ({
@@ -67,13 +86,29 @@ const FormModal = ({
   const [open, setOpen] = useState(false);
 
   const Form = () => {
+    const [state, formAction] = useFormState(deleteActionMap[table as keyof typeof deleteActionMap], {
+        success: false,
+        error: false
+      });
+
+      const router = useRouter();
+      
+        useEffect(()=>{
+          if(state.success){
+            toast.success(`Subject has been deleted!`);
+            setOpen(false);
+            router.refresh();
+          }
+        },[state])
+
     return type === "delete" && id ? (
-        <form action="" className="p-4 flex flex-col gap-4">
+        <form action={formAction} className="p-4 flex flex-col gap-4">
+            <input type="text | number" name="id" value={id} hidden />
             <span className="text-center font-medium">All data will be lost. Are you sure you want to delete this {table}?</span>
             <button className="bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center">Delete</button>
         </form>
     ) : type === "create" || type === "update" ? (
-        forms[table](type, data)
+        forms[table](setOpen, type, data )
     ) : (
       "Form not found!"
     );

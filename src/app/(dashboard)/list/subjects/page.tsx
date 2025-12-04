@@ -40,8 +40,8 @@ const renderRow = (item: SubjectList) => (
       <div className="flex items-center gap-2">
         {role === "admin" && (
            <>
-          <FormModal table="class" type="update" data={item} id={item.id} />
-          <FormModal table="class" type="delete" id={item.id} />
+          <FormModal table="subject" type="update" data={item} id={item.id} />
+          <FormModal table="subject" type="delete" id={item.id} />
           </>
         )}
       </div>
