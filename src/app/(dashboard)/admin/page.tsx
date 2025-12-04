@@ -1,12 +1,12 @@
 import Announcements from "@/components/Announcements";
-import AttendanceCharts from "@/components/AttendanceCharts";
-import CountCharts from "@/components/CountCharts";
-import EventCalendar from "@/components/EventCalendar";
+import AttendanceChartContainer from "@/components/AttendanceChartContainer";
+import CountChartContainer from "@/components/CountChartContainer";
+import EventCalenderContainer from "@/components/EventCalenderContainer";
 import FinanceCharts from "@/components/FinanceCharts";
 import UserCard from "@/components/UserCard";
 import React from "react";
 
-const AdminPage = () => {
+const AdminPage = ({searchParams}:{searchParams:{[keys:string]:string | undefined}}) => {
   return (
     <div className="p-4 flex flex-col gap-4 md:flex-row bg-gray-100">
       {/* Left */}
@@ -16,18 +16,18 @@ const AdminPage = () => {
           <UserCard type="admin" />
           <UserCard type="student" />
           <UserCard type="teacher" />
-          <UserCard type="staff" />
+          <UserCard type="parent" />
         </div>
 
         {/* Middle Charts */}
         <div className="flex gap-4 flex-col lg:flex-row">
           <div className="w-full lg:w-1/3 h-[450px]">
             {/* Count Charts */}
-            <CountCharts/>
+            <CountChartContainer />
           </div>
           <div className="w-full lg:w-2/3 h-[450px]">
             {/* Attendance Charts */}
-            <AttendanceCharts/>
+            <AttendanceChartContainer />
           </div>
         </div>
 
@@ -40,7 +40,7 @@ const AdminPage = () => {
       </div>
       {/* Right */}
       <div className="w-full lg:w-1/3 flex flex-col gap-8">
-        <EventCalendar/>
+        <EventCalenderContainer searchParams={searchParams}/>
         <Announcements/>      
       </div>
     </div>
