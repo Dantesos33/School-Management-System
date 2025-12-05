@@ -4,12 +4,12 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { currentUserId, role } from "@/lib/utils";
-import { Prisma, Result } from "@prisma/client";
+import { getRole, getCurrentUserId } from "@/lib/utils";
+import { Prisma } from "@prisma/client";
 import Image from "next/image";
 import React from "react";
 
-const columns = [
+const baseColumns = [
   {
     header: "Title",
     accessor: "title",
@@ -38,10 +38,6 @@ const columns = [
     accessor: "date",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" || role === "teacher" ? [{
-       header: "Actions",
-       accessor: "action",
-     }]: []),
 ];
 
 type ResultList = {
@@ -56,36 +52,44 @@ type ResultList = {
   startTime: Date;
 };
 
-const renderRow = (item: ResultList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">{item.title}</td>
-    <td>{item.studentName}</td>
-    <td className="hidden md:table-cell">{item.score}</td>
-    <td className="hidden md:table-cell">{item.teacherName}</td>
-    <td className="hidden md:table-cell">{item.className}</td>
-    <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.startTime)}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {(role === "admin" || role === "teacher") && (
-          <>
-            <FormModal
-              table="result"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormModal table="result" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function ResultRow(item: ResultList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">{item.title}</td>
+        <td>{item.studentName}</td>
+        <td className="hidden md:table-cell">{item.score}</td>
+        <td className="hidden md:table-cell">{item.teacherName}</td>
+        <td className="hidden md:table-cell">{item.className}</td>
+        <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.startTime)}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {(role === "admin" || role === "teacher") && (
+              <>
+                <FormModal
+                  table="result"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+                <FormModal table="result" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
+
+Object.assign(renderRow, { displayName: "ResultRowRenderer" });
 
 const ResultListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
+  const currentUserId = await getCurrentUserId();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -133,7 +137,7 @@ const ResultListPage = async ( {searchParams} : { searchParams: {[key: string]:s
       break;
     default:
       break;
-    
+      
   }
 
   const [dataRes, count] = await prisma.$transaction([
@@ -212,7 +216,15 @@ const ResultListPage = async ( {searchParams} : { searchParams: {[key: string]:s
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {(() => {
+        const columns = [
+          ...baseColumns,
+          ...((role === "admin" || role === "teacher") ? [{ header: "Actions", accessor: "action" }] : []),
+        ];
+        const rowRenderer = renderRow(role);
+        Object.assign(rowRenderer, { displayName: "ResultRowRenderer" });
+        return <Table columns={columns} renderRow={rowRenderer} data={data} />;
+      })()}
 
       {/* Pagination */}
       <Pagination page={p} count={count} />

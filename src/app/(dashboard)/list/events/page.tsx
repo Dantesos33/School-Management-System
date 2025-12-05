@@ -4,12 +4,12 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { currentUserId, role } from "@/lib/utils";
+import { getRole, getCurrentUserId } from "@/lib/utils";
 import { Class, Event, Prisma } from "@prisma/client";
 import Image from "next/image";
 import React from "react";
 
-const columns = [
+const baseColumns = [
   {
     header: "Title",
     accessor: "title",
@@ -33,45 +33,49 @@ const columns = [
     accessor: "endTime",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" ? [{
-        header: "Actions",
-        accessor: "action",
-      }]: []),
 ];
 
 type EventList = Event & { class: Class };
 
-const renderRow = (item: EventList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">{item.title}</td>
-    <td>{item.class?.name || "-"}</td>
-    <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.startTime)}</td>
-    <td className="hidden md:table-cell">{item.startTime.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false})}</td>
-    <td className="hidden md:table-cell">{item.endTime.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false})}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {role === "admin" && (
-          <>
-            <FormModal
-              table="event"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormModal table="event" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function EventRow(item: EventList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">{item.title}</td>
+        <td>{item.class?.name || "-"}</td>
+        <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.startTime)}</td>
+        <td className="hidden md:table-cell">{item.startTime.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false})}</td>
+        <td className="hidden md:table-cell">{item.endTime.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false})}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+              <>
+                <FormModal
+                  table="event"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+                <FormModal table="event" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
+
+Object.assign(renderRow, { displayName: "EventRowRenderer" });
 
 //Url Params Condition
 
 const EventListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
+  const currentUserId = await getCurrentUserId();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -95,18 +99,15 @@ const EventListPage = async ( {searchParams} : { searchParams: {[key: string]:st
   // Role Conditions
 
   const roleConditions = {
-    teacher: {lessons: {some: {teacherId: currentUserId!}}},
-    student: {students: {some: {id: currentUserId!}}},
-    parent: {students: {some: {parentId: currentUserId!}}},
-  }
+    teacher: { lessons: { some: { teacherId: currentUserId! } } },
+    student: { students: { some: { id: currentUserId! } } },
+    parent: { students: { some: { parentId: currentUserId! } } },
+  } as const;
 
-  query.OR = [{
-    classId: null,
-  },
-  {
-    class: roleConditions[role as keyof typeof roleConditions] || {},
-  }
-]
+  query.OR = [
+    { classId: null },
+    { class: role ? roleConditions[role as keyof typeof roleConditions] || {} : {} },
+  ]
 
   const [data, count] = await prisma.$transaction([
     prisma.event.findMany({
@@ -144,7 +145,12 @@ const EventListPage = async ( {searchParams} : { searchParams: {[key: string]:st
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {(() => {
+        const columns = [...baseColumns, ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : [])];
+        const rowRenderer = renderRow(role);
+        Object.assign(rowRenderer, { displayName: "EventRowRenderer" });
+        return <Table columns={columns} renderRow={rowRenderer} data={data} />;
+      })()}
 
       {/* Pagination */}
       <Pagination page={p} count={count} />

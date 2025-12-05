@@ -1,0 +1,21 @@
+services:
+  postgress:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: dante
+      POSTGRES_PASSWORD: dantesos33
+      POSTGRES_DB: school
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+    app:
+      container_name: nextjs_app
+      ports:
+        - '3000:3000'
+      environment:
+        - DATABASE_URL=postgresql://dante:dantesos33@localhost:5432/school
+      depends_on:
+        - postgress

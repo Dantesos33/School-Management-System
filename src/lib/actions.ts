@@ -476,3 +476,11 @@ export const deleteExam = async (
     return { success: false, error: true };
   }
 };
+
+export const getTeacherOptions = async () => {
+  const data = await prisma.teacher.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  return data;
+};

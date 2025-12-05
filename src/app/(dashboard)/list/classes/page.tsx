@@ -4,12 +4,12 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { role } from "@/lib/utils";
+import { getRole } from "@/lib/utils";
 import { Class, Prisma, Teacher } from "@prisma/client";
 import Image from "next/image";
 import React from "react";
 
-const columns = [
+const baseColumns = [
   {
     header: "Class Name",
     accessor: "name",
@@ -29,37 +29,40 @@ const columns = [
     accessor: "supervisor",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" ? [{
-        header: "Actions",
-        accessor: "action",
-      }]: []),
 ];
 
 type ClassList = Class & {supervisor: Teacher};
 
-const renderRow = (item: ClassList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">{item.name}</td>
-    <td className="hidden md:table-cell">{item.capacity}</td>
-    <td className="hidden md:table-cell">{item.name[0]}</td>
-    <td className="hidden md:table-cell">{item.supervisor.name}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {role === "admin" && (
-          <>
-          <FormModal table="class" type="update" data={item} id={item.id} />
-          <FormModal table="class" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function ClassRow(item: ClassList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">{item.name}</td>
+        <td className="hidden md:table-cell">{item.capacity}</td>
+        <td className="hidden md:table-cell">{item.name[0]}</td>
+        <td className="hidden md:table-cell">{item.supervisor.name}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+              <>
+              <FormModal table="class" type="update" data={item} id={item.id} />
+              <FormModal table="class" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
+
+Object.assign(renderRow, { displayName: "ClassRowRenderer" });
 
 const ClassListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -117,7 +120,12 @@ const ClassListPage = async ( {searchParams} : { searchParams: {[key: string]:st
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {(() => {
+        const columns = [...baseColumns, ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : [])];
+        const rowRenderer = renderRow(role);
+        Object.assign(rowRenderer, { displayName: "ClassRowRenderer" });
+        return <Table columns={columns} renderRow={rowRenderer} data={data} />;
+      })()}
 
       {/* Pagination */}
       <Pagination page={p} count={count} />

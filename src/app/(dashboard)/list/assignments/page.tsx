@@ -4,12 +4,12 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { currentUserId, role } from "@/lib/utils";
+import { getRole, getCurrentUserId } from "@/lib/utils";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
 import React from "react";
 
-const columns = [
+const baseColumns = [
   {
     header: "Subject Name",
     accessor: "name",
@@ -28,10 +28,6 @@ const columns = [
     accessor: "dueDate",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" || role === "teacher" ? [{
-      header: "Actions",
-      accessor: "action",
-    }]: []),
 ];
 
 type AssignmentList = Assignment & {lesson: {
@@ -40,31 +36,37 @@ type AssignmentList = Assignment & {lesson: {
   teacher: Teacher,
 }};;
 
-const renderRow = (item: AssignmentList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">{item.lesson.subject.name}</td>
-    <td>{item.lesson.class.name}</td>
-    <td className="hidden md:table-cell">{item.lesson.teacher.name}</td>
-    <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.dueDate)}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {(role === "admin" || role === "teacher") && (
-          <>
-          <FormModal table="assignment" type="update" data={item} id={item.id} />
-          <FormModal table="assignment" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function AssignmentRow(item: AssignmentList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">{item.lesson.subject.name}</td>
+        <td>{item.lesson.class.name}</td>
+        <td className="hidden md:table-cell">{item.lesson.teacher.name}</td>
+        <td className="hidden md:table-cell">{new Intl.DateTimeFormat("en-US").format(item.dueDate)}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {(role === "admin" || role === "teacher") && (
+              <>
+              <FormModal table="assignment" type="update" data={item} id={item.id} />
+              <FormModal table="assignment" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
 
-// URL Params Condition
+Object.assign(renderRow, { displayName: "AssignmentRowRenderer" });
 
 const AssignmentListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
+  const currentUserId = await getCurrentUserId();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -158,7 +160,15 @@ const AssignmentListPage = async ( {searchParams} : { searchParams: {[key: strin
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {(() => {
+        const columns = [
+          ...baseColumns,
+          ...((role === "admin" || role === "teacher") ? [{ header: "Actions", accessor: "action" }] : []),
+        ];
+        const rowRenderer = renderRow(role);
+        Object.assign(rowRenderer, { displayName: "AssignmentRowRenderer" });
+        return <Table columns={columns} renderRow={rowRenderer} data={data} />;
+      })()}
 
       {/* Pagination */}
       <Pagination page={p} count={count} />

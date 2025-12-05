@@ -4,12 +4,12 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { role } from "@/lib/utils";
+import { getRole } from "@/lib/utils";
 import { Parent, Prisma, Student } from "@prisma/client";
 import Image from "next/image";
 import React from "react";
 
-const columns = [
+const baseColumns = [
   {
     header: "Info",
     accessor: "info",
@@ -29,42 +29,45 @@ const columns = [
     accessor: "address",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" ? [{
-          header: "Actions",
-          accessor: "action",
-        }]: []),
 ];
 
 type ParentList = Parent & { students: Student[] };
 
-const renderRow = (item: ParentList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">
-      <div className="flex flex-col">
-        <h3 className="font-semibold">{item.name}</h3>
-        <p className="text-xs text-gray-500">{item?.email}</p>
-      </div>
-    </td>
-    <td className="hidden md:table-cell">{item.students.map(student=>student.name).join(",")}</td>
-    <td className="hidden md:table-cell">{item.phone}</td>
-    <td className="hidden md:table-cell">{item.address}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {role === "admin" && (
-           <>
-          <FormModal table="parent" type="update" data={item} id={item.id} />
-          <FormModal table="parent" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function ParentRow(item: ParentList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">
+          <div className="flex flex-col">
+            <h3 className="font-semibold">{item.name}</h3>
+            <p className="text-xs text-gray-500">{item?.email}</p>
+          </div>
+        </td>
+        <td className="hidden md:table-cell">{item.students.map(student=>student.name).join(",")}</td>
+        <td className="hidden md:table-cell">{item.phone}</td>
+        <td className="hidden md:table-cell">{item.address}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+               <>
+              <FormModal table="parent" type="update" data={item} id={item.id} />
+              <FormModal table="parent" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
+
+Object.assign(renderRow, { displayName: "ParentRowRenderer" });
 
 const ParentListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -122,7 +125,7 @@ const ParentListPage = async ( {searchParams} : { searchParams: {[key: string]:s
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <Table columns={[...baseColumns, ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : [])]} renderRow={renderRow(role)} data={data} />
 
       {/* Pagination */}
       <Pagination page={p} count={count} />

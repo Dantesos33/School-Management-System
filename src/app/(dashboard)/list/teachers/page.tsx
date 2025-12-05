@@ -7,11 +7,11 @@ import React from "react";
 import { Class, Prisma, Subject, Teacher } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ITEMS_PER_PAGE } from "@/lib/settings";
-import { role } from "@/lib/utils";
+import { getRole } from "@/lib/utils";
 
 type TeacherList = Teacher & { subjects: Subject[] } & { classes: Class[] };
 
-const columns = [
+const baseColumns = [
   {
     header: "Info",
     accessor: "info",
@@ -41,49 +41,52 @@ const columns = [
     accessor: "address",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" ? [{
-          header: "Actions",
-          accessor: "action",
-        }]: []),
 ];
 
-const renderRow = (item: TeacherList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
-  >
-    <td className="flex items-center gap-4 p-4">
-      <Image
-        src={item.img || "/noAvatar.png"}
-        alt=""
-        width={40}
-        height={40}
-        className="md:hidden xl:block w-10 h-10 rounded-full object-cover"
-      />
-      <div className="flex flex-col">
-        <h3 className="font-semibold">{item.name}</h3>
-        <p className="text-xs text-gray-500">{item?.email}</p>
-      </div>
-    </td>
-    <td className="hidden md:table-cell">{item.username}</td>
-    <td className="hidden md:table-cell">{item.subjects.map(subject=>subject.name).join(",")}</td>
-    <td className="hidden md:table-cell">{item.classes.map(classItem=>classItem.name).join(",")}</td>
-    <td className="hidden md:table-cell">{item.phone}</td>
-    <td className="hidden md:table-cell">{item.address}</td>
-    <td>
-      <div className="flex items-center gap-2">
-        {role === "admin" && (
-           <>
-          <FormModal table="class" type="update" data={item} id={item.id} />
-          <FormModal table="class" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
+function renderRow(role: string | undefined) {
+  return function TeacherRow(item: TeacherList) {
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-schooPurpleLight"
+      >
+        <td className="flex items-center gap-4 p-4">
+          <Image
+            src={item.img || "/noAvatar.png"}
+            alt=""
+            width={40}
+            height={40}
+            className="md:hidden xl:block w-10 h-10 rounded-full object-cover"
+          />
+          <div className="flex flex-col">
+            <h3 className="font-semibold">{item.name}</h3>
+            <p className="text-xs text-gray-500">{item?.email}</p>
+          </div>
+        </td>
+        <td className="hidden md:table-cell">{item.username}</td>
+        <td className="hidden md:table-cell">{item.subjects.map(subject=>subject.name).join(",")}</td>
+        <td className="hidden md:table-cell">{item.classes.map(classItem=>classItem.name).join(",")}</td>
+        <td className="hidden md:table-cell">{item.phone}</td>
+        <td className="hidden md:table-cell">{item.address}</td>
+        <td>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+               <>
+              <FormModal table="teacher" type="update" data={item} id={item.id} />
+              <FormModal table="teacher" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+}
+
+Object.assign(renderRow, { displayName: "TeacherRowRenderer" });
 
 const TeacherListPage = async ( {searchParams} : { searchParams: {[key: string]:string | undefined }}) => {
+  const role = await getRole();
 
   const { page , ...queryParams} = searchParams;
   const p = page ? parseInt(page) : 1;
@@ -150,7 +153,12 @@ const TeacherListPage = async ( {searchParams} : { searchParams: {[key: string]:
       </div>
 
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {(() => {
+        const columns = [...baseColumns, ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : [])];
+        const rowRenderer = renderRow(role);
+        Object.assign(rowRenderer, { displayName: "TeacherRowRenderer" });
+        return <Table columns={columns} renderRow={rowRenderer} data={data} />;
+      })()}
 
       {/* Pagination */}
       <Pagination page={p} count={count} />
