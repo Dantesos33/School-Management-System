@@ -1,9 +1,0 @@
-{
-  "buildCommand": "docker build -t my-next-app .",
-  "outputDirectory": ".",
-  "functions": {
-    "api/index": {
-      "runtime": "docker"
-    }
-  }
-}
